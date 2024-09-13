@@ -12,20 +12,23 @@ type ArtifactTest struct {
 	Storage       string
 	Version       string
 	VersionLatest string
+	Filename      string
 	Test          *testing.T
 
 	Service *artifact.ArtifactService
 }
 
 func TestArtifact(t *testing.T) {
-	s := artifact.NewArtifactService()
-	s.StoragePath = "../../../.test/artifact"
+	storage := "../../../.test/artifact"
+
+	s := artifact.NewArtifactService(storage)
 
 	test := &ArtifactTest{
 		Test:          t,
-		Storage:       "../../../.test/artifact",
+		Storage:       storage,
 		Version:       "1.0.0",
 		VersionLatest: "1.0.1",
+		Filename:      "artifact.zip",
 		Service:       s,
 	}
 	defer test.Cleanup()
@@ -34,6 +37,7 @@ func TestArtifact(t *testing.T) {
 	test.GetArtifact()
 	test.GetArtifactLatest()
 	test.StoreArtifact()
+	test.GetArtifactItem()
 }
 
 /*
@@ -151,7 +155,32 @@ func (t *ArtifactTest) StoreArtifact() {
 		return file
 	}()
 
-	if err := t.Service.Store(artifact, "artifact.zip", file); err != nil {
+	if err := t.Service.Store(artifact, t.Filename, file); err != nil {
 		t.Test.Errorf("Error storing form file: %v", err)
+	}
+}
+
+/*
+Test getting an artifact item. Should not fail
+*/
+func (t *ArtifactTest) GetArtifactItem() {
+	artifact := func() *artifact.Artifact {
+		artifact, err := t.Service.GetLatest()
+
+		if err != nil {
+			t.Test.Errorf("Expected %v, got %v", "nil", err.Error())
+		}
+
+		if artifact.Version != t.VersionLatest {
+			t.Test.Errorf("Expected Version %v, but got %v", t.VersionLatest, artifact.Version)
+			t.Test.Log(artifact)
+		}
+
+		return artifact
+	}()
+
+	item, exist := artifact.Items[t.Filename]
+	if !exist {
+		t.Test.Errorf("Expecting %v, got %v", t.Filename, item.Filename)
 	}
 }

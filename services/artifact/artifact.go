@@ -3,7 +3,6 @@ package artifact
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,9 +13,9 @@ type ArtifactService struct {
 	StoragePath string
 }
 
-func NewArtifactService() *ArtifactService {
+func NewArtifactService(storage_path string) *ArtifactService {
 	return &ArtifactService{
-		StoragePath: "storage",
+		StoragePath: storage_path,
 	}
 }
 
@@ -108,24 +107,6 @@ func (s *ArtifactService) Get(version_number string) (*Artifact, error) {
 	return artifact, nil
 }
 
-func (s *ArtifactService) Store(artifact *Artifact, filename string, file io.Reader) error {
-	filepath := filepath.Join(s.StoragePath, artifact.Version, filename)
-	fmt.Print(filepath)
-
-	dst, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s *ArtifactService) GetLatest() (*Artifact, error) {
 	entries, err := os.ReadDir(s.StoragePath)
 	if err != nil {
@@ -167,6 +148,23 @@ func (s *ArtifactService) GetLatest() (*Artifact, error) {
 	return s.Get(metadata.Version)
 }
 
+func (s *ArtifactService) Store(artifact *Artifact, filename string, file io.Reader) error {
+	filepath := filepath.Join(s.StoragePath, artifact.Version, filename)
+
+	dst, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *ArtifactService) LoadItems(artifact *Artifact) error {
 	artifact_dir := filepath.Join(s.StoragePath, artifact.Version)
 
@@ -182,7 +180,10 @@ func (s *ArtifactService) LoadItems(artifact *Artifact) error {
 	for _, entry := range entries {
 		entry.Name()
 
-		go func(filename string) {
+		func(filename string) {
+			if filename == "metadata.json" {
+				return
+			}
 
 			item := ArtifactItem{
 				Filename: filename,
