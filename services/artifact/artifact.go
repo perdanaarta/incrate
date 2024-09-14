@@ -125,12 +125,12 @@ func (s *ArtifactService) GetLatest() (*Artifact, error) {
 			if _, err := os.Stat(metadata_file); err == nil {
 				file, err := os.Open(metadata_file)
 				if err != nil {
-					return &Artifact{}, err
+					continue
 				}
 				defer file.Close()
 
 				if err := json.NewDecoder(file).Decode(&tmp_metadata); err != nil {
-					return &Artifact{}, err
+					continue
 				}
 			}
 		}

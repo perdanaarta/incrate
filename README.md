@@ -4,7 +4,7 @@ What is a Crate?
 
 A box or frame of wooden slats or boards for packing or protecting something in shipment. Crate.
 
-**InCrate** is a lightweight artifact storage solution written in go with a built-in versioning system. 
+> **InCrate** is a lightweight artifact storage solution written in go with a built-in versioning system. 
 
 It enables you to store build outputs and archives with ease and provides a clear versioning mechanism to manage your application artifacts.
 
@@ -16,8 +16,23 @@ It enables you to store build outputs and archives with ease and provides a clea
 - [ ] Frontend: Develop a user-friendly interface to interact with and manage artifacts.
 - [ ] Cloud Storage Support: Integrate cloud storage for better cold archive storage.
 
-## Installation
+## Usage
 🛠️ Under construction...
+
+Command to start api with specified config file
+```sh
+incrate --config config.yml
+```
+
+Config file example
+```yml
+server:
+  host: ""
+  port: 8080
+
+artifact:
+  storage: ./storage
+```
 
 ## Docs
 🛠️ Under construction...

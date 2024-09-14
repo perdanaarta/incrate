@@ -39,6 +39,10 @@ func main() {
 	config.ConfigFile = fg.FileCfg
 	conf := config.New()
 
+	if conf.Artifact.Storage == "" {
+		panic("Artifact storage not specified. Make sure config file is correct")
+	}
+
 	server := api.NewAPIsServer(conf.Server.Host, int(conf.Server.Port))
 
 	if err := server.Run(); err != nil {

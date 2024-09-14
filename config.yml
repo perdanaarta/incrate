@@ -2,5 +2,5 @@ server:
   host: ""
   port: 8080
 
-app:
-  storage: storage
+artifact:
+  storage: ./storage

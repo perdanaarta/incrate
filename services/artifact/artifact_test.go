@@ -99,18 +99,16 @@ func (t *ArtifactTest) GetArtifactLatest() {
 	}()
 
 	// Getting latest version artifact
-	func() {
-		res, err := t.Service.GetLatest()
+	res, err := t.Service.GetLatest()
 
-		if err != nil {
-			t.Test.Errorf("Expected %v, got %v", "nil", err.Error())
-		}
+	if err != nil {
+		t.Test.Errorf("Expected %v, got %v", "nil", err.Error())
+	}
 
-		if res.Version != t.VersionLatest {
-			t.Test.Errorf("Expected Version %v, but got %v", t.VersionLatest, res.Version)
-			t.Test.Log(res)
-		}
-	}()
+	if res.Version != t.VersionLatest {
+		t.Test.Errorf("Expected Version %v, but got %v", t.VersionLatest, res.Version)
+		t.Test.Log(res)
+	}
 }
 
 /*

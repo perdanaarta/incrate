@@ -48,7 +48,7 @@ func (h *ArtifactAPIsHandler) Get(ctx *gin.Context) {
 	if version_number == "latest" {
 		artifact, err := h.ArtifactService.GetLatest()
 		if err != nil {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "no versions were found"})
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
 
