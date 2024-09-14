@@ -1,0 +1,12 @@
+services:
+  incrate-api:
+    container_name: incrate-api
+    build: .
+    ports:
+      - "8080:8080"
+    networks:
+      - incrate
+
+networks:
+  incrate:
+    driver: bridge
