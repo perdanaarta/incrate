@@ -1,6 +1,7 @@
 package api
 
 import (
+	"incrate/config"
 	"incrate/services/artifact"
 	"net/http"
 
@@ -8,8 +9,9 @@ import (
 )
 
 func NewArtifactAPI() *ArtifactAPIsHandler {
+	c := config.New()
 	return &ArtifactAPIsHandler{
-		ArtifactService: artifact.NewArtifactService("storage"),
+		ArtifactService: artifact.NewArtifactService(c.Artifact.Storage),
 	}
 }
 

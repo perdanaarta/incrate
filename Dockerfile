@@ -20,5 +20,6 @@ FROM alpine
 
 COPY --from=build-env /incrate/bin/api /incrate/
 
-EXPOSE 8080
-CMD ["/incrate/api"]
+COPY config.yml ./
+
+CMD ["/incrate/api", "--config", "config.yml"]

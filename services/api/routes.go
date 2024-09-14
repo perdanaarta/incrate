@@ -1,8 +1,17 @@
 package api
 
-import "github.com/gin-gonic/gin"
+import (
+	"incrate/services/log"
+
+	"github.com/gin-gonic/gin"
+)
 
 func NewAPIsRouter() *gin.Engine {
+
+	if !(len(log.DefaultLogWriter.MultiWriter) < 1) {
+		gin.DefaultWriter = log.DefaultLogWriter.Writer
+	}
+
 	router := gin.Default()
 
 	api := router.Group("/api/v1")
