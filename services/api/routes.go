@@ -19,7 +19,7 @@ func NewAPIsRouter() *gin.Engine {
 	artifactH := NewArtifactAPI()
 	atf := api.Group("/version")
 	{
-		atf.GET("/", artifactH.List)
+		atf.GET("", artifactH.List)
 
 		atf.POST("/new", artifactH.Create)
 		atf.GET(":version", artifactH.Get)
