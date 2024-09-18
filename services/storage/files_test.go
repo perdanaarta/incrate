@@ -7,6 +7,23 @@ import (
 	"testing"
 )
 
+func TestFile(t *testing.T) {
+	provider := NewFileStorageProvider("test")
+
+	fileName := "testfile.txt"
+	content := bytes.NewReader([]byte("test content"))
+
+	err := provider.Store(fileName, content)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Check if file was created
+	if _, err := os.Stat(provider.ActualPath(fileName)); os.IsNotExist(err) {
+		t.Fatalf("expected file to exist, got %v", err)
+	}
+}
+
 func TestFileStorageProvider(t *testing.T) {
 	// Create a temporary directory for testing
 	testDir := t.TempDir()

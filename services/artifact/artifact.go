@@ -1,21 +1,23 @@
 package artifact
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"incrate/services/storage"
 	"io"
-	"os"
 	"path/filepath"
 	"time"
 )
 
 type ArtifactService struct {
-	StoragePath string
+	TempStorage     string
+	StorageProvider storage.StorageProvider
 }
 
-func NewArtifactService(storage_path string) *ArtifactService {
+func NewArtifactService(storageProvider storage.StorageProvider) *ArtifactService {
 	return &ArtifactService{
-		StoragePath: storage_path,
+		StorageProvider: storageProvider,
 	}
 }
 
@@ -26,113 +28,82 @@ func (s *ArtifactService) GetFromMetadata(metadata ArtifactMetadata) *Artifact {
 	}
 }
 
-func (s *ArtifactService) NewMetadata(artifact_dir string, artifact *Artifact) (ArtifactMetadata, error) {
-	metadata_file := filepath.Join(artifact_dir, "metadata.json")
-
+func (s *ArtifactService) NewMetadata(artifact *Artifact) (ArtifactMetadata, error) {
 	metadata := ArtifactMetadata{
 		Version:   artifact.Version,
 		CreatedAt: artifact.CreatedAt,
 	}
 
-	file, err := os.Create(metadata_file)
-	if err != nil {
-		return ArtifactMetadata{}, errors.New("missing metadata")
-	}
-	defer file.Close()
+	var buf bytes.Buffer
 
-	if err := json.NewEncoder(file).Encode(&metadata); err != nil {
-		return ArtifactMetadata{}, errors.New("invalid metadata file format")
+	if err := json.NewEncoder(&buf).Encode(&metadata); err != nil {
+		return metadata, errors.New("invalid metadata file format")
 	}
 
-	return metadata, nil
-}
-
-func (s *ArtifactService) GetMetadata(artifact_dir string) (ArtifactMetadata, error) {
-	metadata_file := filepath.Join(artifact_dir, "metadata.json")
-
-	var metadata ArtifactMetadata
-
-	file, err := os.Open(metadata_file)
-	if err != nil {
-		return ArtifactMetadata{}, errors.New("missing metadata")
-	}
-	defer file.Close()
-
-	if err := json.NewDecoder(file).Decode(&metadata); err != nil {
-		return ArtifactMetadata{}, errors.New("invalid metadata file format")
+	metadataPath := filepath.Join(artifact.Version, "metadata.json")
+	if err := s.StorageProvider.Store(metadataPath, &buf); err != nil {
+		return metadata, errors.New("fail to store metadata to storage")
 	}
 
 	return metadata, nil
 }
 
-func (s *ArtifactService) New(version_number string) (*Artifact, error) {
-	artifact_dir := filepath.Join(s.StoragePath, version_number)
-
-	if _, err := os.Stat(artifact_dir); err == nil {
-		return &Artifact{}, errors.New("artifact exist")
+func (s *ArtifactService) GetMetadata(artifactVersion string) (metadata ArtifactMetadata, err error) {
+	metadataPath := filepath.Join(artifactVersion, "metadata.json")
+	buf, err := s.StorageProvider.Get(metadataPath)
+	if err != nil {
+		return ArtifactMetadata{}, errors.New("missing metadata")
 	}
 
-	if err := os.MkdirAll(artifact_dir, os.ModePerm); err != nil {
-		return &Artifact{}, err
+	if err := json.NewDecoder(buf).Decode(&metadata); err != nil {
+		return ArtifactMetadata{}, errors.New("invalid metadata file format")
 	}
 
+	return
+}
+
+func (s *ArtifactService) New(versionNumber string) (*Artifact, error) {
 	artifact := &Artifact{
-		Version:   version_number,
+		Version:   versionNumber,
 		Items:     make(map[string]ArtifactItem),
 		CreatedAt: time.Now(),
 	}
 
-	s.NewMetadata(artifact_dir, artifact)
-
-	return artifact, nil
-}
-
-func (s *ArtifactService) Get(version_number string) (*Artifact, error) {
-	artifact_dir := filepath.Join(s.StoragePath, version_number)
-
-	if _, err := os.Stat(artifact_dir); err != nil {
-		return &Artifact{}, errors.New("artifact not found")
+	if _, err := s.StorageProvider.Get(versionNumber); err == nil {
+		return &Artifact{}, errors.New("artifact exist")
 	}
 
-	metadata, err := s.GetMetadata(artifact_dir)
-	if err != nil {
+	if _, err := s.NewMetadata(artifact); err != nil {
 		return &Artifact{}, err
 	}
 
-	artifact := s.GetFromMetadata(metadata)
-	if err := s.LoadItems(artifact); err != nil {
-		return artifact, err
-	}
-
 	return artifact, nil
 }
 
+func (s *ArtifactService) Get(versionNumber string) (*Artifact, error) {
+	metadata, err := s.GetMetadata(versionNumber)
+	if err != nil {
+		return &Artifact{}, errors.New("artifact not found")
+	}
+
+	return s.GetFromMetadata(metadata), nil
+}
+
+func (s *ArtifactService) GetFile(versionNumber string, filename string) (io.Reader, error) {
+	return s.StorageProvider.Get(filepath.Join(versionNumber, filename))
+}
+
 func (s *ArtifactService) GetLatest() (*Artifact, error) {
-	entries, err := os.ReadDir(s.StoragePath)
+	entries, err := s.StorageProvider.List("")
 	if err != nil {
 		return &Artifact{}, err
 	}
 
 	metadata := ArtifactMetadata{}
 	for _, entry := range entries {
-		artifact_dir := filepath.Join(s.StoragePath, entry.Name())
-		metadata_file := filepath.Join(artifact_dir, "metadata.json")
-
-		var tmp_metadata ArtifactMetadata
-
-		// Get artifact metadata
-		if entry.IsDir() {
-			if _, err := os.Stat(metadata_file); err == nil {
-				file, err := os.Open(metadata_file)
-				if err != nil {
-					continue
-				}
-				defer file.Close()
-
-				if err := json.NewDecoder(file).Decode(&tmp_metadata); err != nil {
-					continue
-				}
-			}
+		tmp_metadata, err := s.GetMetadata(entry)
+		if err != nil {
+			continue
 		}
 
 		// Juggle metadata until the latest version selected
@@ -148,51 +119,43 @@ func (s *ArtifactService) GetLatest() (*Artifact, error) {
 	return s.Get(metadata.Version)
 }
 
-func (s *ArtifactService) Store(artifact *Artifact, filename string, file io.Reader) error {
-	filepath := filepath.Join(s.StoragePath, artifact.Version, filename)
+func (s *ArtifactService) Store(artifact *Artifact, filename string, content io.Reader) (err error) {
+	// Will add store validation in the future
 
-	dst, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.StorageProvider.Store(
+		filepath.Join(artifact.Version, filename),
+		content,
+	)
 }
 
-func (s *ArtifactService) LoadItems(artifact *Artifact) error {
-	artifact_dir := filepath.Join(s.StoragePath, artifact.Version)
+// func (s *ArtifactService) LoadItems(artifact *Artifact) error {
+// 	artifact_dir := filepath.Join(s.StoragePath, artifact.Version)
 
-	entries, err := os.ReadDir(artifact_dir)
-	if err != nil {
-		return err
-	}
+// 	entries, err := os.ReadDir(artifact_dir)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	if len(artifact.Items) == 0 {
-		artifact.Items = make(map[string]ArtifactItem)
-	}
+// 	if len(artifact.Items) == 0 {
+// 		artifact.Items = make(map[string]ArtifactItem)
+// 	}
 
-	for _, entry := range entries {
-		entry.Name()
+// 	for _, entry := range entries {
+// 		entry.Name()
 
-		func(filename string) {
-			if filename == "metadata.json" {
-				return
-			}
+// 		func(filename string) {
+// 			if filename == "metadata.json" {
+// 				return
+// 			}
 
-			item := ArtifactItem{
-				Filename: filename,
-				Path:     filepath.Join(artifact_dir, filename),
-			}
+// 			item := ArtifactItem{
+// 				Filename: filename,
+// 				Path:     filepath.Join(artifact_dir, filename),
+// 			}
 
-			artifact.Items[filename] = item
-		}(entry.Name())
-	}
+// 			artifact.Items[filename] = item
+// 		}(entry.Name())
+// 	}
 
-	return nil
-}
+// 	return nil
+// }

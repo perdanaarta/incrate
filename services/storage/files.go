@@ -46,10 +46,14 @@ func (s *FileStorageProvider) Move(srcPath string, dstPath string) (err error) {
 	return
 }
 
-func (s *FileStorageProvider) Store(filepath string, content io.Reader) (err error) {
-	filepath = s.ActualPath(filepath)
+func (s *FileStorageProvider) Store(filename string, content io.Reader) (err error) {
+	filename = s.ActualPath(filename)
 
-	file, err := os.Create(filepath)
+	if err = os.MkdirAll(filepath.Dir(filename), 0770); err != nil {
+		return
+	}
+
+	file, err := os.Create(filename)
 	if err != nil {
 		return
 	}
@@ -74,4 +78,12 @@ func (s *FileStorageProvider) Get(filepath string) (content io.Reader, err error
 	content, err = os.Open(filepath)
 
 	return
+}
+
+func (s *FileStorageProvider) IsExist(path string) (ok bool) {
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+
+	return ok
 }

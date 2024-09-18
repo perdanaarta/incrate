@@ -1,8 +1,11 @@
 package api
 
 import (
+	"fmt"
 	"incrate/config"
 	"incrate/services/artifact"
+	"incrate/services/storage"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +14,7 @@ import (
 func NewArtifactAPI() *ArtifactAPIsHandler {
 	c := config.New()
 	return &ArtifactAPIsHandler{
-		ArtifactService: artifact.NewArtifactService(c.Artifact.Storage),
+		ArtifactService: artifact.NewArtifactService(storage.NewFileStorageProvider(c.Artifact.Storage)),
 	}
 }
 
@@ -87,24 +90,30 @@ func (h *ArtifactAPIsHandler) UploadItem(ctx *gin.Context) {
 		return
 	}
 
-	file, err := ctx.FormFile("file")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "file error"})
+	// file, err := ctx.FormFile("file")
+	// if err != nil {
+	// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": "file error"})
+	// 	return
+	// }
+
+	// parts, err := file.Open()
+	// if err != nil {
+	// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 	return
+	// }
+
+	filename := ctx.GetHeader("X-Filename")
+	if filename == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "filename header not provided"})
 		return
 	}
 
-	parts, err := file.Open()
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := h.ArtifactService.Store(artifact, file.Filename, parts); err != nil {
+	if err := h.ArtifactService.Store(artifact, filename, ctx.Request.Body); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.Writer.WriteHeader(204)
+	ctx.JSON(http.StatusAccepted, gin.H{"status": "file upload succeeded"})
 }
 
 func (h *ArtifactAPIsHandler) DownloadItem(ctx *gin.Context) {
@@ -112,14 +121,27 @@ func (h *ArtifactAPIsHandler) DownloadItem(ctx *gin.Context) {
 
 	artifact := h.getArtifact(ctx)
 	if artifact == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "artifact not found"})
 		return
 	}
 
-	item, exist := artifact.Items[filename]
-	if !exist {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+	file, err := h.ArtifactService.GetFile(artifact.Version, filename)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.FileAttachment(item.Path, item.Filename)
+	// item, exist := artifact.Items[filename]
+	// if !exist {
+	// 	ctx.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+	// 	return
+	// }
+
+	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	ctx.Header("Content-Type", "application/octet-stream")
+	if _, err := io.Copy(ctx.Writer, file); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "fail to serve file from storage"})
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
