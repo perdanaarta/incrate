@@ -22,27 +22,22 @@ type ArtifactAPIsHandler struct {
 	ArtifactService *artifact.ArtifactService
 }
 
-func (h *ArtifactAPIsHandler) getArtifact(ctx *gin.Context) *artifact.Artifact {
+func (h *ArtifactAPIsHandler) getArtifact(ctx *gin.Context) (artifact *artifact.Artifact, err error) {
 	version_number := ctx.Param("version")
 
 	if version_number == "latest" {
-		artifact, err := h.ArtifactService.GetLatest()
+		artifact, err = h.ArtifactService.GetLatest()
 		if err != nil {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "no versions were found"})
-			return nil
+			return
 		}
-
-		ctx.JSON(http.StatusOK, artifact)
-		return nil
 	}
 
-	artifact, err := h.ArtifactService.Get(version_number)
+	artifact, err = h.ArtifactService.Get(version_number)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "version not found"})
-		return nil
+		return
 	}
 
-	return artifact
+	return
 }
 
 func (h *ArtifactAPIsHandler) Get(ctx *gin.Context) {
@@ -86,8 +81,8 @@ func (h *ArtifactAPIsHandler) Create(ctx *gin.Context) {
 }
 
 func (h *ArtifactAPIsHandler) UploadFormItem(ctx *gin.Context) {
-	artifact := h.getArtifact(ctx)
-	if artifact == nil {
+	artifact, err := h.getArtifact(ctx)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "artifact not found"})
 		return
 	}
@@ -111,8 +106,8 @@ func (h *ArtifactAPIsHandler) UploadFormItem(ctx *gin.Context) {
 }
 
 func (h *ArtifactAPIsHandler) UploadItem(ctx *gin.Context) {
-	artifact := h.getArtifact(ctx)
-	if artifact == nil {
+	artifact, err := h.getArtifact(ctx)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "artifact not found"})
 		return
 	}
@@ -134,8 +129,8 @@ func (h *ArtifactAPIsHandler) UploadItem(ctx *gin.Context) {
 func (h *ArtifactAPIsHandler) DownloadItem(ctx *gin.Context) {
 	filename := ctx.Param("filename")
 
-	artifact := h.getArtifact(ctx)
-	if artifact == nil {
+	artifact, err := h.getArtifact(ctx)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "artifact not found"})
 		return
 	}
