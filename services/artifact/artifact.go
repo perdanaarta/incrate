@@ -127,3 +127,7 @@ func (s *ArtifactService) Store(artifact *Artifact, filename string, content io.
 		content,
 	)
 }
+
+func (s *ArtifactService) List() ([]string, error) {
+	return s.StorageProvider.List("")
+}

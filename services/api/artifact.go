@@ -154,3 +154,8 @@ func (h *ArtifactAPIsHandler) DownloadItem(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
+
+func (h *ArtifactAPIsHandler) List(ctx *gin.Context) {
+	list, _ := h.ArtifactService.List()
+	ctx.JSON(http.StatusOK, gin.H{"artifacts": list})
+}
