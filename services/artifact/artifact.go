@@ -62,10 +62,11 @@ func (s *ArtifactService) GetMetadata(artifactVersion string) (metadata Artifact
 	return
 }
 
-func (s *ArtifactService) New(versionNumber string) (*Artifact, error) {
+func (s *ArtifactService) New(versionNumber string, description string) (*Artifact, error) {
 	artifact := &Artifact{
-		Version:   versionNumber,
-		CreatedAt: time.Now(),
+		Version:     versionNumber,
+		Description: description,
+		CreatedAt:   time.Now(),
 	}
 
 	if _, err := s.StorageProvider.Get(versionNumber); err == nil {

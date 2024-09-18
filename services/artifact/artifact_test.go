@@ -53,7 +53,7 @@ func (t *ArtifactTest) Cleanup() {
 Test making new artifact. Should not fail
 */
 func (t *ArtifactTest) NewArtifact() {
-	res, err := t.Service.New(t.Version)
+	res, err := t.Service.New(t.Version, "")
 
 	if err != nil {
 		t.Test.Errorf("Expected %v, got %v", "nil", err.Error())
@@ -88,7 +88,7 @@ func (t *ArtifactTest) GetArtifactLatest() {
 
 	// Making the latest version artifact
 	func() {
-		res, err := t.Service.New(t.VersionLatest)
+		res, err := t.Service.New(t.VersionLatest, "")
 
 		if err != nil {
 			t.Test.Errorf("Expected %v, got %v", "nil", err.Error())
@@ -159,28 +159,3 @@ func (t *ArtifactTest) StoreArtifact() {
 		t.Test.Errorf("Error storing form file: %v", err)
 	}
 }
-
-/*
-Test getting an artifact item. Should not fail
-*/
-// func (t *ArtifactTest) GetArtifactItem() {
-// 	artifact := func() *artifact.Artifact {
-// 		artifact, err := t.Service.GetLatest()
-
-// 		if err != nil {
-// 			t.Test.Errorf("Expected %v, got %v", "nil", err.Error())
-// 		}
-
-// 		if artifact.Version != t.VersionLatest {
-// 			t.Test.Errorf("Expected Version %v, but got %v", t.VersionLatest, artifact.Version)
-// 			t.Test.Log(artifact)
-// 		}
-
-// 		return artifact
-// 	}()
-
-// 	item, exist := artifact.Items[t.Filename]
-// 	if !exist {
-// 		t.Test.Errorf("Expecting %v, got %v", t.Filename, item.Filename)
-// 	}
-// }
