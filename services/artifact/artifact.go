@@ -65,7 +65,6 @@ func (s *ArtifactService) GetMetadata(artifactVersion string) (metadata Artifact
 func (s *ArtifactService) New(versionNumber string) (*Artifact, error) {
 	artifact := &Artifact{
 		Version:   versionNumber,
-		Items:     make(map[string]ArtifactItem),
 		CreatedAt: time.Now(),
 	}
 
@@ -127,35 +126,3 @@ func (s *ArtifactService) Store(artifact *Artifact, filename string, content io.
 		content,
 	)
 }
-
-// func (s *ArtifactService) LoadItems(artifact *Artifact) error {
-// 	artifact_dir := filepath.Join(s.StoragePath, artifact.Version)
-
-// 	entries, err := os.ReadDir(artifact_dir)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if len(artifact.Items) == 0 {
-// 		artifact.Items = make(map[string]ArtifactItem)
-// 	}
-
-// 	for _, entry := range entries {
-// 		entry.Name()
-
-// 		func(filename string) {
-// 			if filename == "metadata.json" {
-// 				return
-// 			}
-
-// 			item := ArtifactItem{
-// 				Filename: filename,
-// 				Path:     filepath.Join(artifact_dir, filename),
-// 			}
-
-// 			artifact.Items[filename] = item
-// 		}(entry.Name())
-// 	}
-
-// 	return nil
-// }
